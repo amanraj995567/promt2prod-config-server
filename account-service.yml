@@ -1,0 +1,20 @@
+server:
+  port: 9050
+  servlet:
+    context-path: /account
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:9010/promt2prod-accountdb
+    username: user
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+jwt:
+  secret-key: ahbkghuelijwrfsdawrehfsjda7yg32u849ryfdsahugkfuhwejbsda
+
+stripe:
+  api:
+    secret: sk_test_51TIvLsQrUTDCc7Cs3fvUJDd2I3atvybY5Yh3UDtRjuhHL8HfPGl2CJw4DjIdeU6Pf5dkpedM557V39qMWmFldolJ000gr24kp4
+  webhook:
+    secret: whsec_e7a21a2fee5f72213b3e5c4486a0123c9b62f21d192dcf0c09162c03053c2795
