@@ -1,21 +1,55 @@
-server:
-  port: 9020
-  servlet:
-    context-path: /workspace
+# ─────────────────────────────────────────────
+# Workspace Service — Spring Cloud Config
+# ─────────────────────────────────────────────
 
+# ─── Embedded server ────────────────────────
+server:
+  port: 9020                       # workspace-service listens on this port
+  servlet:
+    context-path: /workspace       # all endpoints prefixed with /workspace
+
+# ─── PostgreSQL datasource ──────────────────
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5434/promt2prod-workspacedb
+    url: jdbc:postgresql://localhost:5434/promt2prod-workspacedb   # dedicated DB for workspace data
     username: user
-    password: password
+    password: password             # TODO: replace with env-var / Vault secret in prod
     driver-class-name: org.postgresql.Driver
+
+  # ─── Redis cache ──────────────────────────
   data:
     redis:
       host: localhost
+      port: 6379                   # default Redis port; used for session / caching layer
+
+# ─────────────────────────────────────────────
+# MinIO object storage (project files / assets)
+# ─────────────────────────────────────────────
+minio:
+  url: http://localhost:9000        # MinIO server endpoint
+  access-key: minioadmin            # TODO: replace with env-var in prod
+  secret-key: minioadmin123         # TODO: replace with env-var in prod
+  bucket: projects                  # default bucket for storing project files
+
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  datasource:
+    url: jdbc:postgresql://pgvector.promt2prod-core.svc.cluster.local:5432/workspacedb   # use the internal PostgreSQL service name in Kubernetes
+    username: workspace_user
+    password: ${DB_PASSWORD}       # read the DB password from an environment variable in Kubernetes
+    
+  data:
+    redis:
+      host: redis.promt2prod-core.svc.cluster.local   # use the internal Redis service name in Kubernetes
       port: 6379
 
-minio:
-  url: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin123
-  bucket: projects
+  minio:
+  url: http://minio.promt2prod-core.svc.cluster.local:9000        # MinIO server endpoint
+  access-key: ${MINIO_ROOT_USER}       # TODO: replace with env-var in prod
+  secret-key: ${MINIO_ROOT_PASSWORD}         # TODO: replace with env-var in prod
+  bucket: ${MINIO_PROJECT_BUCKET}         # TODO: replace with env-var in prod

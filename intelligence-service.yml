@@ -1,25 +1,49 @@
-server:
-  port: 9030
-  servlet.context-path: /intelligence
+# ─────────────────────────────────────────────
+# Intelligence Service — Spring Cloud Config
+# ─────────────────────────────────────────────
 
+# ─── Embedded server ────────────────────────
+server:
+  port: 9030                             # intelligence-service listens on this port
+  servlet.context-path: /intelligence   # all endpoints prefixed with /intelligence
+
+# ─── PostgreSQL datasource ──────────────────
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:9010/promt2prod-intelligencedb
+    url: jdbc:postgresql://localhost:9010/promt2prod-intelligencedb   # dedicated DB for intelligence data
     username: user
-    password: password
+    password: password                   # TODO: replace with env-var / Vault secret in prod
     driver-class-name: org.postgresql.Driver
 
+  # ─── Spring AI / OpenRouter (LLM) ─────────
   ai:
-    model.chat: openai
+    model.chat: openai                   # use the OpenAI-compatible client adapter
     openai:
-      api-key: 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
-      base-url: https://openrouter.ai/api
+      api-key: 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   # TODO: move to env-var in prod
+      base-url: https://openrouter.ai/api   # OpenRouter acts as a proxy to multiple LLM providers
       chat:
         options:
-          model: google/gemini-3-flash-preview
-          temperature: 0.2
+          model: google/gemini-3-flash-preview   # LLM used for chat / code-generation tasks
+          temperature: 0.2                       # low temperature → more deterministic output
       embedding:
         options:
-          model: qwen/qwen3-embedding-8b
+          model: qwen/qwen3-embedding-8b         # model used to generate vector embeddings
 
 ---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  datasource:
+    url: jdbc:postgresql://pgvector.promt2prod-core.svc.cluster.local:5432/intelligencedb   # use the internal PostgreSQL service name in Kubernetes
+    username: intelligence_user
+    password: ${DB_PASSWORD}
+
+
+ai:
+  openai:
+    api-key: ${OPENAI_API_KEY}   # read the OpenAI API key from an environment variable in Kubernetes
+  chat:
+    options:
+      model: google/gemini-3-flash-preview
+      temperature: 0.2

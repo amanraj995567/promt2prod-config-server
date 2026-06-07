@@ -1,32 +1,38 @@
-server:
-   port: 8080
+# ─────────────────────────────────────────────
+# API Gateway — Spring Cloud Config
+# ─────────────────────────────────────────────
 
+# ─── Embedded server ────────────────────────
+server:
+   port: 8080   # single entry-point for all client traffic
+
+# ─── Spring Cloud Gateway routes ────────────
+# lb:// prefix means load-balanced via Eureka registry
+# StripPrefix=2 removes /api/v1 before forwarding to the downstream service
 spring:
    cloud:
       gateway.server.webflux:
          routes:
-         #Account Service Route
+            # ── Account Service ──────────────────────
             - id: account-service
-              uri: lb://account-service
+              uri: ${ACCOUNT_SERVICE_URI}:lb://account-service      # resolve via Eureka
               predicates:
-                 - Path=/api/v1/account/**
+                 - Path=/api/v1/account/**       # match all account endpoints
               filters:
-                 - StripPrefix=2
-         #Intelligence Service Route
+                 - StripPrefix=2                 # strip /api/v1 → forwards as /account/...
+
+            # ── Intelligence Service ─────────────────
             - id: intelligence-service
-              uri: lb://intelligence-service
+              uri: ${INTELLIGENCE_SERVICE_URI}:lb://intelligence-service
               predicates:
                  - Path=/api/v1/intelligence/**
               filters:
                  - StripPrefix=2
 
-          #Workspace Service Route
+            # ── Workspace Service ────────────────────
             - id: workspace-service
-              uri: lb://workspace-service
+              uri: ${WORKSPACE_SERVICE_URI}:lb://workspace-service
               predicates:
                  - Path=/api/v1/workspace/**
               filters:
                  - StripPrefix=2
-
-          
-          

@@ -1,36 +1,112 @@
+# ─────────────────────────────────────────────
+# Spring JPA / Hibernate settings (default profile)
+# ─────────────────────────────────────────────
 spring:
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: update # auto-update schema on startup; use 'validate' in prod
+    show-sql: true # log generated SQL to console
     properties:
       hibernate:
-        format_sql: true
+        format_sql: true # pretty-print SQL in logs
+
+  # ─── Kafka broker & serialization ───────────
   kafka:
     bootstrap-servers: localhost:29092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer # serialize POJOs as JSON
     consumer:
-      group-id: promt2prod-group
-      auto-offset-reset: earliest
+      group-id: promt2prod-group # consumer group shared across service instances
+      auto-offset-reset: earliest # read from beginning when no committed offset exists
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
 
+# ─────────────────────────────────────────────
+# Eureka service-discovery (Netflix OSS)
+# ─────────────────────────────────────────────
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/ # Eureka server address
     enabled: true
-    register-with-eureka: true
-    fetch-registry: true
+    register-with-eureka: true # publish this service to the registry
+    fetch-registry: true # pull the registry so this service can discover others
   instance:
-    prefer-ip-address: true
+    prefer-ip-address: true # register by IP instead of hostname (avoids DNS issues in containers)
     hostname: localhost
 
+# ─────────────────────────────────────────────
+# JWT authentication
+# ─────────────────────────────────────────────
 jwt:
-  secretKey: mySecretKey
+  secretKey: mySecretKey # TODO: replace with an env-var / Vault secret before going to prod
+
+# ─────────────────────────────────────────────
+# Application-level settings
+# ─────────────────────────────────────────────
+app:
+  frontend:
+    url: http://localhost:2020/frontend # CORS-allowed origin for the SPA
+  preview:
+    domain: localhost
+    namespace: promt2prod-apps # Kubernetes namespace used for preview deployments
+    proxy-port: 8090 # local port the preview proxy listens on
+
+  # ─── Actuator / management endpoints ────────
+  managements:
+    health:
+      comnfig:
+        enabled: true
+    endpoints:
+    web:
+      exposure:
+        include: health,info,metrics # expose only these actuator endpoints publicly
+
+# ─────────────────────────────────────────────
+# Logging overrides
+# ─────────────────────────────────────────────
+logging:
+  level:
+    org.apache.kafka.clients: WARN # suppress verbose Kafka client debug logs
+    org.apache.kafka.common: WARN
+
+
+# ─────────────────────────────────────────────
+# Kubernetes profile overrides
+# ─────────────────────────────────────────────
+---
+# Activated when the app is started with --spring.profiles.active=k8s
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  kafka:
+    bootstrap-servers: kafka.promt2prod-core.svc.cluster.local:9092 # use the internal Kafka service name in Kubernetes
+
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+jwt:
+  secretKey: ${JWT_SECRET_KEY} # read the JWT secret key from an environment variable in Kubernetes
 
 app:
   frontend:
-    url: http://localhost:2020/frontend
+    url: { FRONTEND_URL } # internal URL for the frontend service in Kubernetes
+  preview:
+    domain: { PREVIEW_DOMAIN } # internal domain for preview deployments in Kubernetes
+    namespace: { PREVIEW_NAMESPACE }
+    proxy-port: { PROXY_PORT }
+
+ACCOUNT_SERVICE_URI: http://account-service # internal URL for the account service in Kubernetes
+WORKSPACE_SERVICE_URI: http://workspace-service # internal URL for the workspace service in Kubernetes
+INTELLIGENCE_SERVICE_URI: http://intelligence-service # internal URL for the intelligence service in Kubernetes
+
+

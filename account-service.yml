@@ -1,20 +1,52 @@
-server:
-  port: 9050
-  servlet:
-    context-path: /account
+# ─────────────────────────────────────────────
+# Account Service — Spring Cloud Config
+# ─────────────────────────────────────────────
 
+# ─── Embedded server ────────────────────────
+server:
+  port: 9050                      # account-service listens on this port
+  servlet:
+    context-path: /account        # all endpoints prefixed with /account
+
+# ─── PostgreSQL datasource ──────────────────
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:9010/promt2prod-accountdb
+    url: jdbc:postgresql://localhost:9010/promt2prod-accountdb   # dedicated DB for account data
     username: user
-    password: password
+    password: password            # TODO: replace with env-var / Vault secret in prod
     driver-class-name: org.postgresql.Driver
 
+# ─────────────────────────────────────────────
+# JWT authentication
+# ─────────────────────────────────────────────
 jwt:
-  secret-key: ahbkghuelijwrfsdawrehfsjda7yg32u849ryfdsahugkfuhwejbsda
+  secret-key: ahbkghuelijwrfsdawrehfsjda7yg32u849ryfdsahugkfuhwejbsda   # TODO: move to env-var before prod
 
+# ─────────────────────────────────────────────
+# Stripe payment integration
+# ─────────────────────────────────────────────
 stripe:
   api:
-    secret: sk_test_51TIvLsQrUTDCc7Cs3fvUJDd2I3atvybY5Yh3UDtRjuhHL8HfPGl2CJw4DjIdeU6Pf5dkpedM557V39qMWmFldolJ000gr24kp4
+    secret: sk_test_51TIvLsQrUTDCc7Cs3fvUJDd2I3atvybY5Yh3UDtRjuhHL8HfPGl2CJw4DjIdeU6Pf5dkpedM557V39qMWmFldolJ000gr24kp4   # test-mode secret key; swap for live key in prod
   webhook:
-    secret: whsec_e7a21a2fee5f72213b3e5c4486a0123c9b62f21d192dcf0c09162c03053c2795
+    secret: whsec_e7a21a2fee5f72213b3e5c4486a0123c9b62f21d192dcf0c09162c03053c2795   # used to verify Stripe webhook signatures
+
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  datasource:
+    url: jdbc:postgresql://pgvector.promt2prod-core.svc.cluster.local:5432/accountdb   # use the internal PostgreSQL service name in Kubernetes
+    username: account_user
+    password: ${DB_PASSWORD}      
+
+  stripe:
+    api:
+      secret: ${STRIPE_SECRET_KEY} 
+    webhook:
+      secret: ${STRIPE_WEBHOOK_SECRET}
+
+  
